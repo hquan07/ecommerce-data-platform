@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+.env
+.venv
+env/
+venv/
+
+# Spark / Data
+spark-warehouse/
+metastore_db/
+derby.log
+data/raw/*
+data/bronze/*
+data/silver/*
+data/gold/*
+data/quarantine/*
+!data/**/.gitkeep
+
+# Docker / Airflow
+airflow/logs/*
+!airflow/logs/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
