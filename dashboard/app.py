@@ -28,7 +28,7 @@ try:
     df_states_init = get_customer_count_by_state()
     state_options = [{'label': 'All States', 'value': 'ALL'}] + [{'label': s, 'value': s} for s in df_states_init['customer_state'].dropna().unique()]
 except Exception as e:
-    logger.error(f"Error fetching states: {e}")
+    logging.error(f"Error fetching states: {e}")
     state_options = [{'label': 'All States', 'value': 'ALL'}]
 
 app.layout = dbc.Container([
