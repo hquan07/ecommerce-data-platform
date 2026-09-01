@@ -8,3 +8,4 @@ pytest==8.3.4
 dash
 plotly
 dash-bootstrap-components
+scikit-learn
