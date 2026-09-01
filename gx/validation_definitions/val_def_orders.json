@@ -1,0 +1,22 @@
+{
+  "data": {
+    "asset": {
+      "id": "e4142970-eaab-4a8a-a460-4c8d65bd7995",
+      "name": "fact_orders_asset"
+    },
+    "batch_definition": {
+      "id": "71d0284c-0e84-41c4-a42c-2440941e7153",
+      "name": "whole_table_orders"
+    },
+    "datasource": {
+      "id": "cb81d881-cf71-4ed9-9885-3439fec123ae",
+      "name": "ecommerce_postgres"
+    }
+  },
+  "id": "911fb403-5b7d-4da3-9874-4a3c6658f7db",
+  "name": "val_def_orders",
+  "suite": {
+    "id": "d08fc8f5-0a1a-405a-92ec-64617387e6f4",
+    "name": "fact_orders_suite"
+  }
+}
