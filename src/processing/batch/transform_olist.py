@@ -31,24 +31,10 @@ def process_table(spark, dataset_name, db_table, subset_col, jdbc_url, pg_user, 
         print(f"Error reading bronze data for {dataset_name}: {e}")
         return
 
-    # Basic cleaning
-    df_clean = df.dropna(subset=[subset_col])
-
-    # Handle schema mismatch for products
-    if dataset_name == "products":
-        df_clean = df_clean.select(
-            col("product_id"),
-            col("product_category_name").alias("product_category_name_english"),
-            col("product_weight_g").cast("decimal(38,18)"),
-            col("product_length_cm").cast("decimal(38,18)"),
-            col("product_height_cm").cast("decimal(38,18)"),
-            col("product_width_cm").cast("decimal(38,18)")
-        )
-    elif dataset_name == "order_reviews":
-        df_clean = df_clean.withColumn("review_score", col("review_score").cast("int"))
-        df_clean = df_clean.dropna(subset=["review_score"])
+    # No cleaning, load raw data directly to Postgres (ELT pattern)
+    df_clean = df
     
-    print(f"Writing cleaned data to PostgreSQL {db_table}...")
+    print(f"Writing raw data to PostgreSQL {db_table}...")
     try:
         df_clean.write \
             .format("jdbc") \
@@ -74,15 +60,15 @@ def main():
     pg_password = os.getenv("POSTGRES_PASSWORD", "ecommerce")
     jdbc_url = f"jdbc:postgresql://{pg_host}:{pg_port}/{pg_db}"
 
-    # Ordered properly for foreign key dependencies
+    # Load to raw schema without strict foreign key dependencies
     datasets = [
-        ("customers", "dw.dim_customer", "customer_id"),
-        ("sellers", "dw.dim_seller", "seller_id"),
-        ("products", "dw.dim_product", "product_id"),
-        ("orders", "dw.fact_orders", "order_id"),
-        ("order_items", "dw.fact_order_items", "order_id"),
-        ("order_payments", "dw.fact_payments", "order_id"),
-        ("order_reviews", "dw.fact_reviews", "review_id"),
+        ("customers", "raw.customers", "customer_id"),
+        ("sellers", "raw.sellers", "seller_id"),
+        ("products", "raw.products", "product_id"),
+        ("orders", "raw.orders", "order_id"),
+        ("order_items", "raw.order_items", "order_id"),
+        ("order_payments", "raw.order_payments", "order_id"),
+        ("order_reviews", "raw.order_reviews", "review_id"),
     ]
 
     for ds_name, table_name, pk_col in datasets:
