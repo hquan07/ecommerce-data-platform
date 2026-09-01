@@ -1,0 +1,15 @@
+{
+  "namespace": "ecommerce.avro",
+  "type": "record",
+  "name": "OrderEvent",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "event_type", "type": "string"},
+    {"name": "customer_id", "type": "string"},
+    {"name": "product_id", "type": "string"},
+    {"name": "timestamp", "type": "string"},
+    {"name": "order_id", "type": ["null", "string"], "default": null},
+    {"name": "quantity", "type": ["null", "int"], "default": null},
+    {"name": "unit_price", "type": ["null", "double"], "default": null}
+  ]
+}
