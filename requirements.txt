@@ -10,3 +10,8 @@ plotly
 dash-bootstrap-components
 scikit-learn
 dbt-postgres
+confluent-kafka
+fastavro
+httpx
+authlib
+cachetools
