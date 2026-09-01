@@ -60,7 +60,7 @@ app.layout = dbc.Container([
                 className="mb-3"
             )
         ], width=4),
-    ], className="mb-4 justify-content-center fade-in-slide-up"),
+    ], className="mb-4 justify-content-center fade-in-slide-up", style={"position": "relative", "zIndex": 999}),
     
     # KPI Cards Row (will be updated via callback)
     dbc.Row(id='kpi-row', className="mb-5 justify-content-center"),
