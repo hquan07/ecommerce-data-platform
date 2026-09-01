@@ -25,7 +25,7 @@ def process_table(spark, dataset_name, db_table, subset_col, jdbc_url, pg_user, 
     print(f"\nProcessing {dataset_name} data...")
     bronze_path = f"s3a://ecommerce-data/bronze/olist/{dataset_name}/olist_{dataset_name}_dataset.csv"
     try:
-        df = spark.read.csv(bronze_path, header=True, inferSchema=True)
+        df = spark.read.csv(bronze_path, header=True, inferSchema=True, multiLine=True, escape='"')
         print(f"Read {df.count()} records from MinIO Bronze ({dataset_name}).")
     except Exception as e:
         print(f"Error reading bronze data for {dataset_name}: {e}")
@@ -44,6 +44,9 @@ def process_table(spark, dataset_name, db_table, subset_col, jdbc_url, pg_user, 
             col("product_height_cm").cast("decimal(38,18)"),
             col("product_width_cm").cast("decimal(38,18)")
         )
+    elif dataset_name == "order_reviews":
+        df_clean = df_clean.withColumn("review_score", col("review_score").cast("int"))
+        df_clean = df_clean.dropna(subset=["review_score"])
     
     print(f"Writing cleaned data to PostgreSQL {db_table}...")
     try:
@@ -54,6 +57,7 @@ def process_table(spark, dataset_name, db_table, subset_col, jdbc_url, pg_user, 
             .option("user", pg_user) \
             .option("password", pg_password) \
             .option("driver", "org.postgresql.Driver") \
+            .option("truncate", "true") \
             .mode("append") \
             .save()
         print(f"Successfully written {dataset_name} data to {db_table}.")
