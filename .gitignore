@@ -23,6 +23,7 @@ data/quarantine/*
 # Docker / Airflow
 airflow/logs/*
 !airflow/logs/.gitkeep
+logs/
 
 # IDE / OS
 .idea/
