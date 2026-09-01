@@ -1,0 +1,22 @@
+{
+  "data": {
+    "asset": {
+      "id": "f858c9d6-1284-478b-95e3-7904da2e4da8",
+      "name": "dim_customer_asset"
+    },
+    "batch_definition": {
+      "id": "6ae73ff4-b3ae-445b-a39b-f7bd83ec146c",
+      "name": "whole_table_customer"
+    },
+    "datasource": {
+      "id": "cb81d881-cf71-4ed9-9885-3439fec123ae",
+      "name": "ecommerce_postgres"
+    }
+  },
+  "id": "abc2f22f-3ece-45bf-a5b3-80c16d805cee",
+  "name": "val_def_customer",
+  "suite": {
+    "id": "012d5290-8acc-4f5d-bb08-2f47d7abf8aa",
+    "name": "dim_customer_suite"
+  }
+}
