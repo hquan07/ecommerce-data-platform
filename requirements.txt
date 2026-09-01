@@ -5,3 +5,5 @@ boto3==1.35.81
 kafka-python==2.0.2
 pydantic==2.10.3
 pytest==8.3.4
+dash
+plotly
