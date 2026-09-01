@@ -1,0 +1,127 @@
+/* Global Background & Font */
+body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #2c3e50;
+    min-height: 100vh;
+}
+
+/* Animations */
+@keyframes fadeInSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in-slide-up {
+    animation: fadeInSlideUp 0.8s ease-out forwards;
+}
+
+/* Gradient KPI Cards */
+.kpi-card {
+    border-radius: 15px;
+    border: none;
+    color: white;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+}
+
+.kpi-card::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(30deg);
+    z-index: -1;
+    transition: transform 0.5s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+}
+
+.kpi-card:hover::before {
+    transform: rotate(0deg);
+}
+
+.gradient-blue {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.gradient-green {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.gradient-orange {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+/* Custom Tabs */
+.nav-tabs {
+    border-bottom: 2px solid transparent;
+    margin-bottom: 20px;
+    gap: 10px;
+    justify-content: center;
+}
+
+.nav-tabs .nav-link {
+    border: none !important;
+    border-radius: 30px !important;
+    padding: 10px 25px;
+    font-weight: 600;
+    color: #4a5568 !important;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    color: #667eea !important;
+}
+
+.nav-tabs .nav-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    box-shadow: 0 8px 15px rgba(102, 126, 234, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Container & Charts */
+.dashboard-container {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.dash-graph {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+    background: white;
+    padding: 10px;
+    transition: all 0.3s ease;
+}
+
+.dash-graph:hover {
+    box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+    transform: translateY(-5px);
+}

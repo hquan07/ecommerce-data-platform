@@ -1,9 +1,11 @@
 import dash
-from dash import dcc, html
+from dash import dcc, html, Input, Output
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
 import logging
+from datetime import datetime, date
+
 from dashboard.queries import (
     get_revenue_over_time,
     get_revenue_by_category,
@@ -12,124 +14,195 @@ from dashboard.queries import (
     get_customer_count_by_state,
     get_payment_methods,
     get_top_products,
-    get_review_score_distribution
+    get_review_score_distribution,
+    get_customer_segments,
+    get_segment_scatter
 )
 
 logging.basicConfig(level=logging.INFO)
 
-# Initialize with a Bootstrap theme and load external font
 app = dash.Dash(__name__, title="E-commerce Dashboard", external_stylesheets=[dbc.themes.FLATLY, "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"])
 
-def serve_layout():
+# Fetch states for dropdown once at startup
+try:
+    df_states_init = get_customer_count_by_state()
+    state_options = [{'label': 'All States', 'value': 'ALL'}] + [{'label': s, 'value': s} for s in df_states_init['customer_state'].dropna().unique()]
+except Exception as e:
+    logger.error(f"Error fetching states: {e}")
+    state_options = [{'label': 'All States', 'value': 'ALL'}]
+
+app.layout = dbc.Container([
+    html.Div(style={"height": "30px"}),
+    html.H1("🛒 E-Commerce Data Platform", className="text-center mb-4 fade-in-slide-up", style={"fontWeight": "800", "background": "-webkit-linear-gradient(45deg, #667eea, #764ba2)", "-webkit-background-clip": "text", "-webkit-text-fill-color": "transparent"}),
+    
+    # Filters Row
+    dbc.Row([
+        dbc.Col([
+            html.Label("Date Range:", className="fw-bold"),
+            dcc.DatePickerRange(
+                id='date-picker-range',
+                min_date_allowed=date(2016, 1, 1),
+                max_date_allowed=date(2026, 12, 31),
+                initial_visible_month=date(2018, 8, 1),
+                start_date=date(2017, 1, 1),
+                end_date=date(2018, 12, 31),
+                className="mb-3",
+                style={"width": "100%"}
+            )
+        ], width=4),
+        dbc.Col([
+            html.Label("Customer State:", className="fw-bold"),
+            dcc.Dropdown(
+                id='state-dropdown',
+                options=state_options,
+                value='ALL',
+                clearable=False,
+                className="mb-3"
+            )
+        ], width=4),
+    ], className="mb-4 justify-content-center fade-in-slide-up"),
+    
+    # KPI Cards Row (will be updated via callback)
+    dbc.Row(id='kpi-row', className="mb-5 justify-content-center"),
+
+    # Tabs
+    dbc.Tabs([
+        dbc.Tab(label="💰 Sales & Revenue", children=[
+            html.Br(),
+            dbc.Row([dbc.Col(dcc.Loading(dcc.Graph(id='fig_rev_time', className="dash-graph")), width=12)]),
+            html.Br(),
+            dbc.Row([
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_rev_cat', className="dash-graph")), width=7),
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_payment', className="dash-graph")), width=5)
+            ])
+        ], className="fade-in-slide-up"),
+        
+        dbc.Tab(label="📦 Orders & Operations", children=[
+            html.Br(),
+            dbc.Row([
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_order_status', className="dash-graph")), width=5),
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_delivery', className="dash-graph")), width=7)
+            ])
+        ], className="fade-in-slide-up"),
+        
+        dbc.Tab(label="👥 Customers", children=[
+            html.Br(),
+            dbc.Row([dbc.Col(dcc.Loading(dcc.Graph(id='fig_customer', className="dash-graph")), width=12)])
+        ], className="fade-in-slide-up"),
+        
+        dbc.Tab(label="🏷️ Products & Reviews", children=[
+            html.Br(),
+            dbc.Row([
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_products', className="dash-graph")), width=6),
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_reviews', className="dash-graph")), width=6)
+            ])
+        ], className="fade-in-slide-up"),
+        
+        dbc.Tab(label="🤖 ML Customer Segments", children=[
+            html.Br(),
+            dbc.Row([
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_ml_segments_bar', className="dash-graph")), width=5),
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_ml_segments_scatter', className="dash-graph")), width=7)
+            ])
+        ], className="fade-in-slide-up"),
+    ])
+], fluid=True, className="dashboard-container")
+
+@app.callback(
+    [
+        Output('kpi-row', 'children'),
+        Output('fig_rev_time', 'figure'),
+        Output('fig_rev_cat', 'figure'),
+        Output('fig_payment', 'figure'),
+        Output('fig_order_status', 'figure'),
+        Output('fig_delivery', 'figure'),
+        Output('fig_customer', 'figure'),
+        Output('fig_products', 'figure'),
+        Output('fig_reviews', 'figure'),
+        Output('fig_ml_segments_bar', 'figure'),
+        Output('fig_ml_segments_scatter', 'figure')
+    ],
+    [
+        Input('date-picker-range', 'start_date'),
+        Input('date-picker-range', 'end_date'),
+        Input('state-dropdown', 'value')
+    ]
+)
+def update_dashboard(start_date, end_date, state):
     try:
-        # 1. Fetch all data
-        df_revenue_time = get_revenue_over_time()
-        df_revenue_cat = get_revenue_by_category()
-        df_order_status = get_order_status_breakdown()
-        df_delivery = get_delivery_time_distribution()
-        df_customer = get_customer_count_by_state()
-        df_payment = get_payment_methods()
-        df_products = get_top_products()
-        df_reviews = get_review_score_distribution()
+        # Fetch filtered data
+        df_revenue_time = get_revenue_over_time(start_date, end_date, state)
+        df_revenue_cat = get_revenue_by_category(start_date, end_date, state)
+        df_order_status = get_order_status_breakdown(start_date, end_date, state)
+        df_delivery = get_delivery_time_distribution(start_date, end_date, state)
+        df_customer = get_customer_count_by_state(start_date, end_date)
+        df_payment = get_payment_methods(start_date, end_date, state)
+        df_products = get_top_products(start_date, end_date, state)
+        
+        # Will return empty if table doesn't exist
+        df_reviews = get_review_score_distribution(start_date, end_date, state)
+        
+        # ML data (not filtered by date typically as segments are based on lifetime)
+        df_segments = get_customer_segments()
+        df_scatter = get_segment_scatter()
 
-        # 2. Create Figures
-        # --- Tab 1: Sales & Revenue ---
-        if not df_revenue_time.empty:
-            fig_rev_time = px.area(df_revenue_time, x="month", y="total_revenue", title="Revenue Over Time", template="plotly_white")
-        else:
-            fig_rev_time = px.area(title="No Data")
+        # Build KPIs
+        total_cust = df_customer['customer_count'].sum() if not df_customer.empty else 0
+        total_rev = df_revenue_time['total_revenue'].sum() if not df_revenue_time.empty else 0
+        total_ord = df_order_status['order_count'].sum() if not df_order_status.empty else 0
+        
+        kpi_row = [
+            dbc.Col(dbc.Card([dbc.CardBody([html.H5("Filtered Customers", className="card-title fw-bold opacity-75"), html.H2(f"{total_cust}", className="fw-bold m-0")])], className="kpi-card gradient-blue fade-in-slide-up"), width=4),
+            dbc.Col(dbc.Card([dbc.CardBody([html.H5("Filtered Revenue", className="card-title fw-bold opacity-75"), html.H2(f"${total_rev:,.0f}", className="fw-bold m-0")])], className="kpi-card gradient-green fade-in-slide-up"), width=4),
+            dbc.Col(dbc.Card([dbc.CardBody([html.H5("Filtered Orders", className="card-title fw-bold opacity-75"), html.H2(f"{total_ord}", className="fw-bold m-0")])], className="kpi-card gradient-orange fade-in-slide-up"), width=4),
+        ]
 
-        if not df_revenue_cat.empty:
-            fig_rev_cat = px.bar(df_revenue_cat, x="product_category_name_english", y="total_revenue", title="Top 10 Categories by Revenue", template="plotly_white")
-        else:
-            fig_rev_cat = px.bar(title="No Data")
-            
-        if not df_payment.empty:
-            fig_payment = px.pie(df_payment, names="payment_type", values="usage_count", title="Payment Methods Breakdown", template="plotly_white", hole=0.4)
-        else:
-            fig_payment = px.pie(title="No Data")
+        # Build Figures
+        empty_fig = px.bar(title="No Data")
+        empty_fig.update_layout(template="plotly_white")
 
-        # --- Tab 2: Orders & Operations ---
-        if not df_order_status.empty:
-            fig_order_status = px.pie(df_order_status, names="order_status", values="order_count", title="Order Status Breakdown", hole=0.3, template="plotly_white")
-        else:
-            fig_order_status = px.pie(title="No Data")
-
-        if not df_delivery.empty:
-            fig_delivery = px.histogram(df_delivery, x="delivery_days", nbins=50, title="Delivery Time Distribution (Days)", template="plotly_white")
-        else:
-            fig_delivery = px.histogram(title="No Data")
-
-        # --- Tab 3: Customers ---
-        if not df_customer.empty:
-            fig_customer = px.bar(df_customer, x="customer_state", y="customer_count", title="Customers by State", color="customer_count", template="plotly_white")
-        else:
-            fig_customer = px.bar(title="No Data")
-
-        # --- Tab 4: Products & Reviews ---
-        if not df_products.empty:
-            fig_products = px.bar(df_products, x="product_category_name_english", y="items_sold", title="Top 10 Best-Selling Categories", template="plotly_white")
-        else:
-            fig_products = px.bar(title="No Data")
-
+        fig_rev_time = px.area(df_revenue_time, x="month", y="total_revenue", title="Revenue Over Time", template="plotly_white") if not df_revenue_time.empty else empty_fig
+        fig_rev_cat = px.bar(df_revenue_cat, x="product_category_name_english", y="total_revenue", title="Top 10 Categories by Revenue", template="plotly_white") if not df_revenue_cat.empty else empty_fig
+        fig_payment = px.pie(df_payment, names="payment_type", values="usage_count", title="Payment Methods", template="plotly_white", hole=0.4) if not df_payment.empty else empty_fig
+        
+        fig_order_status = px.pie(df_order_status, names="order_status", values="order_count", title="Order Status", hole=0.3, template="plotly_white") if not df_order_status.empty else empty_fig
+        fig_delivery = px.histogram(df_delivery, x="delivery_days", nbins=50, title="Delivery Time (Days)", template="plotly_white") if not df_delivery.empty else empty_fig
+        
+        fig_customer = px.bar(df_customer, x="customer_state", y="customer_count", title="Customers by State", color="customer_count", template="plotly_white") if not df_customer.empty else empty_fig
+        fig_products = px.bar(df_products, x="product_category_name_english", y="items_sold", title="Top 10 Categories", template="plotly_white") if not df_products.empty else empty_fig
+        
         if not df_reviews.empty:
-            fig_reviews = px.bar(df_reviews, x="review_score", y="review_count", title="Review Score Distribution", template="plotly_white")
+            fig_reviews = px.bar(df_reviews, x="review_score", y="review_count", title="Review Score", template="plotly_white")
             fig_reviews.update_xaxes(type='category')
         else:
-            fig_reviews = px.bar(title="No Data")
+            fig_reviews = empty_fig
 
-        # 3. Layout Structure
-        return dbc.Container([
-            html.Div(style={"height": "30px"}),
-            html.H1("🛒 E-Commerce Data Platform", className="text-center mb-4 fade-in-slide-up", style={"fontWeight": "800", "background": "-webkit-linear-gradient(45deg, #667eea, #764ba2)", "-webkit-background-clip": "text", "-webkit-text-fill-color": "transparent"}),
+        # ML Figures
+        if not df_segments.empty:
+            fig_ml_bar = px.pie(df_segments, names="segment_name", values="customer_count", title="Customer Segments Size", hole=0.4, template="plotly_white")
+        else:
+            fig_ml_bar = px.bar(title="Run ML Pipeline First")
             
-            # KPI Cards
-            dbc.Row([
-                dbc.Col(dbc.Card([dbc.CardBody([html.H5("Total Customers", className="card-title fw-bold opacity-75"), html.H2(f"{df_customer['customer_count'].sum() if not df_customer.empty else 0}", className="fw-bold m-0")])], className="kpi-card gradient-blue fade-in-slide-up"), width=4),
-                dbc.Col(dbc.Card([dbc.CardBody([html.H5("Total Revenue", className="card-title fw-bold opacity-75"), html.H2(f"${df_revenue_time['total_revenue'].sum():,.0f}" if not df_revenue_time.empty else "$0", className="fw-bold m-0")])], className="kpi-card gradient-green fade-in-slide-up", style={"animationDelay": "0.1s"}), width=4),
-                dbc.Col(dbc.Card([dbc.CardBody([html.H5("Total Orders", className="card-title fw-bold opacity-75"), html.H2(f"{df_order_status['order_count'].sum() if not df_order_status.empty else 0}", className="fw-bold m-0")])], className="kpi-card gradient-orange fade-in-slide-up", style={"animationDelay": "0.2s"}), width=4),
-            ], className="mb-5 mt-4 justify-content-center"),
+        if not df_scatter.empty:
+            # 3D scatter if possible or 2D (Frequency vs Monetary colored by Segment)
+            fig_ml_scatter = px.scatter(df_scatter, x="recency", y="monetary", color="segment_name", size="frequency", 
+                                        title="RFM Scatter (Recency vs Monetary)", template="plotly_white", 
+                                        hover_data=['frequency'])
+        else:
+            fig_ml_scatter = px.scatter(title="Run ML Pipeline First")
 
-            # Tabs for different charts
-            dbc.Tabs([
-                dbc.Tab(label="💰 Sales & Revenue", children=[
-                    html.Br(),
-                    dbc.Row([dbc.Col(html.Div(dcc.Graph(figure=fig_rev_time), className="dash-graph"), width=12)]),
-                    html.Br(),
-                    dbc.Row([
-                        dbc.Col(html.Div(dcc.Graph(figure=fig_rev_cat), className="dash-graph"), width=7),
-                        dbc.Col(html.Div(dcc.Graph(figure=fig_payment), className="dash-graph"), width=5)
-                    ])
-                ], className="fade-in-slide-up", style={"animationDelay": "0.3s"}),
-                dbc.Tab(label="📦 Orders & Operations", children=[
-                    html.Br(),
-                    dbc.Row([
-                        dbc.Col(html.Div(dcc.Graph(figure=fig_order_status), className="dash-graph"), width=5),
-                        dbc.Col(html.Div(dcc.Graph(figure=fig_delivery), className="dash-graph"), width=7)
-                    ])
-                ], className="fade-in-slide-up", style={"animationDelay": "0.3s"}),
-                dbc.Tab(label="👥 Customers", children=[
-                    html.Br(),
-                    dbc.Row([dbc.Col(html.Div(dcc.Graph(figure=fig_customer), className="dash-graph"), width=12)])
-                ], className="fade-in-slide-up", style={"animationDelay": "0.3s"}),
-                dbc.Tab(label="🏷️ Products & Reviews", children=[
-                    html.Br(),
-                    dbc.Row([
-                        dbc.Col(html.Div(dcc.Graph(figure=fig_products), className="dash-graph"), width=6),
-                        dbc.Col(html.Div(dcc.Graph(figure=fig_reviews), className="dash-graph"), width=6)
-                    ])
-                ], className="fade-in-slide-up", style={"animationDelay": "0.3s"}),
-            ])
-        ], fluid=True, className="dashboard-container")
-
+        return (
+            kpi_row, 
+            fig_rev_time, fig_rev_cat, fig_payment, 
+            fig_order_status, fig_delivery, 
+            fig_customer, 
+            fig_products, fig_reviews,
+            fig_ml_bar, fig_ml_scatter
+        )
     except Exception as e:
-        logging.error(f"Error loading dashboard layout: {e}")
-        return dbc.Container([
-            html.H1("E-Commerce Dashboard", className="mt-5 text-center text-danger"),
-            html.P("Error loading data from Data Warehouse. Please check the logs.", className="text-center")
-        ])
-
-app.layout = serve_layout
+        logging.error(f"Dashboard update error: {e}")
+        empty_fig = px.bar(title="Error Loading Data")
+        return [html.Div("Error", className="text-danger")] + [empty_fig]*10
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8050, debug=True)
