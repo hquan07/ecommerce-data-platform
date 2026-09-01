@@ -32,3 +32,4 @@ logs/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+dbt/target/

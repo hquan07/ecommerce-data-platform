@@ -29,9 +29,16 @@ with DAG(
         bash_command='echo "Simulating Data Ingestion..." && sleep 5',
     )
 
-    process_task = BashOperator(
-        task_id='process_silver_gold_layer',
-        bash_command='echo "Simulating Spark Processing..." && sleep 5',
+    # Run dbt models to transform raw data to dimensional/fact tables
+    dbt_run_task = BashOperator(
+        task_id='dbt_run_transformations',
+        bash_command='cd /opt/airflow/dbt && dbt run --profiles-dir .',
+    )
+    
+    # Run dbt data tests
+    dbt_test_task = BashOperator(
+        task_id='dbt_test_data',
+        bash_command='cd /opt/airflow/dbt && dbt test --profiles-dir .',
     )
 
     quality_check_task = BashOperator(
@@ -41,4 +48,4 @@ with DAG(
     
     end_pipeline = EmptyOperator(task_id='end_pipeline')
 
-    start_pipeline >> ingest_task >> process_task >> quality_check_task >> end_pipeline
+    start_pipeline >> ingest_task >> dbt_run_task >> dbt_test_task >> quality_check_task >> end_pipeline
