@@ -101,8 +101,12 @@ app.layout = dbc.Container([
         dbc.Tab(label="🤖 ML Customer Segments", children=[
             html.Br(),
             dbc.Row([
-                dbc.Col(dcc.Loading(dcc.Graph(id='fig_ml_segments_bar', className="dash-graph")), width=5),
-                dbc.Col(dcc.Loading(dcc.Graph(id='fig_ml_segments_scatter', className="dash-graph")), width=7)
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_ml_treemap', className="dash-graph")), width=6),
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_ml_radar', className="dash-graph")), width=6)
+            ], className="mb-4"),
+            dbc.Row([
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_ml_scatter_3d', className="dash-graph")), width=6),
+                dbc.Col(dcc.Loading(dcc.Graph(id='fig_ml_box', className="dash-graph")), width=6)
             ])
         ], className="fade-in-slide-up"),
     ])
@@ -119,8 +123,10 @@ app.layout = dbc.Container([
         Output('fig_customer', 'figure'),
         Output('fig_products', 'figure'),
         Output('fig_reviews', 'figure'),
-        Output('fig_ml_segments_bar', 'figure'),
-        Output('fig_ml_segments_scatter', 'figure')
+        Output('fig_ml_treemap', 'figure'),
+        Output('fig_ml_radar', 'figure'),
+        Output('fig_ml_scatter_3d', 'figure'),
+        Output('fig_ml_box', 'figure')
     ],
     [
         Input('date-picker-range', 'start_date'),
@@ -179,17 +185,45 @@ def update_dashboard(start_date, end_date, state):
 
         # ML Figures
         if not df_segments.empty:
-            fig_ml_bar = px.pie(df_segments, names="segment_name", values="customer_count", title="Customer Segments Size", hole=0.4, template="plotly_white")
+            # 1. Treemap (Size vs Monetary)
+            fig_ml_treemap = px.treemap(df_segments, path=[px.Constant("All Segments"), "segment_name"], values="customer_count",
+                                        color="avg_monetary", color_continuous_scale="Blues",
+                                        title="Segment Size & Avg Revenue (Treemap)", template="plotly_white")
+            
+            # 2. Radar Chart (Normalized Profiles)
+            fig_ml_radar = go.Figure()
+            for col in ['avg_recency', 'avg_frequency', 'avg_monetary']:
+                max_val = df_segments[col].max()
+                df_segments[f'{col}_norm'] = df_segments[col] / max_val if max_val > 0 else 0
+                
+            categories = ['Recency', 'Frequency', 'Monetary']
+            colors = px.colors.qualitative.Plotly
+            for i, row in df_segments.iterrows():
+                fig_ml_radar.add_trace(go.Scatterpolar(
+                    r=[row['avg_recency_norm'], row['avg_frequency_norm'], row['avg_monetary_norm']],
+                    theta=categories,
+                    fill='toself',
+                    name=row['segment_name'],
+                    line_color=colors[i % len(colors)]
+                ))
+            fig_ml_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), 
+                                       title="Segment Profiles (Normalized RFM)", template="plotly_white")
         else:
-            fig_ml_bar = px.bar(title="Run ML Pipeline First")
+            fig_ml_treemap = px.bar(title="Run ML Pipeline First")
+            fig_ml_radar = px.bar(title="Run ML Pipeline First")
             
         if not df_scatter.empty:
-            # 3D scatter if possible or 2D (Frequency vs Monetary colored by Segment)
-            fig_ml_scatter = px.scatter(df_scatter, x="recency", y="monetary", color="segment_name", size="frequency", 
-                                        title="RFM Scatter (Recency vs Monetary)", template="plotly_white", 
-                                        hover_data=['frequency'])
+            # 3. 3D Scatter Plot
+            fig_ml_scatter_3d = px.scatter_3d(df_scatter, x="recency", y="frequency", z="monetary", color="segment_name", 
+                                        title="3D RFM Clusters", template="plotly_white")
+            fig_ml_scatter_3d.update_traces(marker=dict(size=3))
+            
+            # 4. Box Plot (Monetary Distribution)
+            fig_ml_box = px.box(df_scatter, x="segment_name", y="monetary", color="segment_name", 
+                                title="Monetary Distribution (Log Scale)", template="plotly_white", log_y=True)
         else:
-            fig_ml_scatter = px.scatter(title="Run ML Pipeline First")
+            fig_ml_scatter_3d = px.scatter(title="Run ML Pipeline First")
+            fig_ml_box = px.bar(title="Run ML Pipeline First")
 
         return (
             kpi_row, 
@@ -197,12 +231,12 @@ def update_dashboard(start_date, end_date, state):
             fig_order_status, fig_delivery, 
             fig_customer, 
             fig_products, fig_reviews,
-            fig_ml_bar, fig_ml_scatter
+            fig_ml_treemap, fig_ml_radar, fig_ml_scatter_3d, fig_ml_box
         )
     except Exception as e:
         logging.error(f"Dashboard update error: {e}")
         empty_fig = px.bar(title="Error Loading Data")
-        return [html.Div("Error", className="text-danger")] + [empty_fig]*10
+        return [html.Div("Error", className="text-danger")] + [empty_fig]*12
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8050, debug=True)
