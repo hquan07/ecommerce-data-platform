@@ -1,4 +1,11 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='table',
+    indexes=[
+      {'columns': ['order_purchase_timestamp']},
+      {'columns': ['customer_id']},
+      {'columns': ['order_status']}
+    ]
+) }}
 
 SELECT
     order_id,

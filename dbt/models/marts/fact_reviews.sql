@@ -1,4 +1,9 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='table',
+    indexes=[
+      {'columns': ['order_id']}
+    ]
+) }}
 
 SELECT
     review_id,
