@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import numpy as np
 import logging
 from datetime import datetime, date
+from concurrent.futures import ThreadPoolExecutor
 
 from dashboard.queries import (
     get_revenue_over_time,
@@ -166,28 +167,52 @@ app.layout = dbc.Container([
 )
 def update_dashboard(start_date, end_date, state):
     try:
-        # Fetch filtered data
-        df_revenue_time = get_revenue_over_time(start_date, end_date, state)
-        df_revenue_cat = get_revenue_by_category(start_date, end_date, state)
-        df_order_status = get_order_status_breakdown(start_date, end_date, state)
-        df_delivery = get_delivery_time_distribution(start_date, end_date, state)
-        df_customer = get_customer_count_by_state(start_date, end_date)
-        df_payment = get_payment_methods(start_date, end_date, state)
-        df_products = get_top_products(start_date, end_date, state)
-        df_reviews = get_review_score_distribution(start_date, end_date, state)
+        logging.info("Starting concurrent SQL queries...")
+        # Define the query tasks
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_rev_time = executor.submit(get_revenue_over_time, start_date, end_date, state)
+            future_rev_cat = executor.submit(get_revenue_by_category, start_date, end_date, state)
+            future_order_status = executor.submit(get_order_status_breakdown, start_date, end_date, state)
+            future_delivery = executor.submit(get_delivery_time_distribution, start_date, end_date, state)
+            future_customer = executor.submit(get_customer_count_by_state, start_date, end_date)
+            future_payment = executor.submit(get_payment_methods, start_date, end_date, state)
+            future_products = executor.submit(get_top_products, start_date, end_date, state)
+            future_reviews = executor.submit(get_review_score_distribution, start_date, end_date, state)
+            
+            future_heatmap = executor.submit(get_order_heatmap, start_date, end_date, state)
+            future_late = executor.submit(get_late_delivery_rate, start_date, end_date, state)
+            future_retention = executor.submit(get_customer_retention, start_date, end_date, state)
+            future_new_cust = executor.submit(get_new_customers_over_time, start_date, end_date, state)
+            future_order_val = executor.submit(get_order_value_distribution, start_date, end_date, state)
+            future_bottom_rev = executor.submit(get_bottom_categories_by_review, start_date, end_date, state)
+            future_del_vs_rev = executor.submit(get_delivery_vs_review, start_date, end_date, state)
+            
+            future_segments = executor.submit(get_customer_segments)
+            future_scatter = executor.submit(get_segment_scatter)
 
-        # New data fetches
-        df_heatmap = get_order_heatmap(start_date, end_date, state)
-        df_late = get_late_delivery_rate(start_date, end_date, state)
-        df_retention = get_customer_retention(start_date, end_date, state)
-        df_new_cust = get_new_customers_over_time(start_date, end_date, state)
-        df_order_val = get_order_value_distribution(start_date, end_date, state)
-        df_bottom_rev = get_bottom_categories_by_review(start_date, end_date, state)
-        df_del_vs_rev = get_delivery_vs_review(start_date, end_date, state)
-
-        # ML data
-        df_segments = get_customer_segments()
-        df_scatter = get_segment_scatter()
+            logging.info("Waiting for futures to complete...")
+            # Wait and get results
+            df_revenue_time = future_rev_time.result()
+            df_revenue_cat = future_rev_cat.result()
+            df_order_status = future_order_status.result()
+            df_delivery = future_delivery.result()
+            df_customer = future_customer.result()
+            df_payment = future_payment.result()
+            df_products = future_products.result()
+            df_reviews = future_reviews.result()
+            
+            df_heatmap = future_heatmap.result()
+            df_late = future_late.result()
+            df_retention = future_retention.result()
+            df_new_cust = future_new_cust.result()
+            df_order_val = future_order_val.result()
+            df_bottom_rev = future_bottom_rev.result()
+            df_del_vs_rev = future_del_vs_rev.result()
+            
+            df_segments = future_segments.result()
+            df_scatter = future_scatter.result()
+            
+        logging.info("All SQL queries completed successfully.")
 
         # Build KPIs
         total_cust = df_customer['customer_count'].sum() if not df_customer.empty else 0
@@ -295,7 +320,6 @@ def update_dashboard(start_date, end_date, state):
             fig_delivery_vs_review = px.scatter(df_del_vs_rev, x='delivery_days', y='review_score',
                                                 title='Delivery Time vs Review Score',
                                                 template='plotly_white', opacity=0.3,
-                                                trendline='lowess',
                                                 labels={'delivery_days': 'Delivery Days', 'review_score': 'Review Score'},
                                                 color_discrete_sequence=['#e67e22'])
         else:
@@ -338,6 +362,8 @@ def update_dashboard(start_date, end_date, state):
         else:
             fig_ml_scatter_3d = px.scatter(title="Run ML Pipeline First")
             fig_ml_box = px.bar(title="Run ML Pipeline First")
+
+        logging.info("All figures generated successfully. Returning to Dash...")
 
         return (
             kpi_row, 

@@ -3,6 +3,7 @@ services:
     image: postgres:16
     container_name: ecommerce-postgres
     restart: unless-stopped
+    shm_size: 256m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ecommerce}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
