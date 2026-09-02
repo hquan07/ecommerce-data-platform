@@ -27,29 +27,43 @@ graph TD
     end
 
     subgraph Streaming_Layer
-        EventGen -->|Produces| Kafka[Apache Kafka]
-        Kafka -->|Consumes| Spark[PySpark Structured Streaming]
+        Kafka[Apache Kafka]
+        Spark[PySpark Structured Streaming]
     end
 
     subgraph Data_Lake_and_Warehouse
-        Olist -->|Raw Ingestion| MinIO_Bronze[MinIO Bronze Layer]
-        MinIO_Bronze -->|Transformation| MinIO_Silver[MinIO Silver Layer]
-        MinIO_Silver -->|dbt Models| Postgres[PostgreSQL Analytical Warehouse]
-        Spark -->|Real-time Aggregations| Postgres
+        MinIO_Bronze[MinIO Bronze Layer]
+        MinIO_Silver[MinIO Silver Layer]
+        Postgres[PostgreSQL Analytical Warehouse]
     end
     
     subgraph Quality_and_ML
-        Postgres -->|Data Validation| GX[Great Expectations]
-        Postgres -->|K-Means Clustering| ML[Customer Segmentation Model]
-        ML -->|Write back| Postgres
+        GX[Great Expectations]
+        ML[Customer Segmentation Model]
     end
 
     subgraph Serving_and_Orchestration
-        Postgres -->|Serves| Dash[Plotly Dash Interactive Dashboard]
-        Airflow[Apache Airflow] -.->|Orchestrates| MinIO_Bronze
-        Airflow -.->|Orchestrates| dbt[dbt]
-        Airflow -.->|Orchestrates| GX
+        Dash[Plotly Dash Interactive Dashboard]
+        Airflow[Apache Airflow]
+        dbt[dbt]
     end
+
+    EventGen -->|Produces| Kafka
+    Kafka -->|Consumes| Spark
+
+    Olist -->|Raw Ingestion| MinIO_Bronze
+    MinIO_Bronze -->|Transformation| MinIO_Silver
+    MinIO_Silver -->|dbt Models| Postgres
+    Spark -->|Real-time Aggregations| Postgres
+
+    Postgres -->|Data Validation| GX
+    Postgres -->|K-Means Clustering| ML
+    ML -->|Write back| Postgres
+
+    Postgres -->|Serves| Dash
+    Airflow -.->|Orchestrates| MinIO_Bronze
+    Airflow -.->|Orchestrates| dbt
+    Airflow -.->|Orchestrates| GX
 ```
 
 ---
