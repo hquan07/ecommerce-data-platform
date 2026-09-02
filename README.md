@@ -21,33 +21,33 @@ This project integrates industry-standard tools to build a robust data pipeline,
 
 ```mermaid
 graph TD
-    subgraph Data_Sources ["Data Sources"]
-        Olist["Olist Historical Data CSV"]
-        EventGen["Real-time Event Generator"]
+    subgraph Data_Sources
+        Olist[Olist Historical Data CSV]
+        EventGen[Real-time Event Generator]
     end
 
-    subgraph Streaming_Layer ["Streaming Layer"]
-        EventGen -->|Produces| Kafka["Apache Kafka"]
-        Kafka -->|Consumes| Spark["PySpark Structured Streaming"]
+    subgraph Streaming_Layer
+        EventGen -->|Produces| Kafka[Apache Kafka]
+        Kafka -->|Consumes| Spark[PySpark Structured Streaming]
     end
 
-    subgraph Data_Lake_Warehouse ["Data Lake & Warehouse"]
-        Olist -->|Raw Ingestion| MinIO_Bronze["MinIO: Bronze Layer"]
-        MinIO_Bronze -->|Transformation| MinIO_Silver["MinIO: Silver Layer"]
-        MinIO_Silver -->|dbt Models| Postgres["PostgreSQL: Analytical Warehouse"]
+    subgraph Data_Lake_and_Warehouse
+        Olist -->|Raw Ingestion| MinIO_Bronze[MinIO Bronze Layer]
+        MinIO_Bronze -->|Transformation| MinIO_Silver[MinIO Silver Layer]
+        MinIO_Silver -->|dbt Models| Postgres[PostgreSQL Analytical Warehouse]
         Spark -->|Real-time Aggregations| Postgres
     end
     
-    subgraph Quality_ML ["Quality & ML"]
-        Postgres -->|Data Validation| GX["Great Expectations"]
-        Postgres -->|K-Means Clustering| ML["Customer Segmentation Model"]
+    subgraph Quality_and_ML
+        Postgres -->|Data Validation| GX[Great Expectations]
+        Postgres -->|K-Means Clustering| ML[Customer Segmentation Model]
         ML -->|Write back| Postgres
     end
 
-    subgraph Serving_Orchestration ["Serving & Orchestration"]
-        Postgres -->|Serves| Dash["Plotly Dash Interactive Dashboard"]
-        Airflow["Apache Airflow"] -.->|Orchestrates| MinIO_Bronze
-        Airflow -.->|Orchestrates| dbt
+    subgraph Serving_and_Orchestration
+        Postgres -->|Serves| Dash[Plotly Dash Interactive Dashboard]
+        Airflow[Apache Airflow] -.->|Orchestrates| MinIO_Bronze
+        Airflow -.->|Orchestrates| dbt[dbt]
         Airflow -.->|Orchestrates| GX
     end
 ```
