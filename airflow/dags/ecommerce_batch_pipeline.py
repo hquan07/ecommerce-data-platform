@@ -43,7 +43,7 @@ with DAG(
 
     quality_check_task = BashOperator(
         task_id='data_quality_check',
-        bash_command='python /opt/airflow/run_gx_checkpoint.py',
+        bash_command='python /opt/airflow/gx/run_gx_checkpoint.py',
     )
     
     end_pipeline = EmptyOperator(task_id='end_pipeline')
