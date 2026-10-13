@@ -157,6 +157,7 @@ class CloudVaultClient:
         if missing:
             raise CloudVaultError(f"Missing metadata fields: {', '.join(sorted(missing))}", code="INVALID_FILE")
         payload["checksum_sha256"] = self._sha256(path)
+        payload["size_bytes"] = size
         with path.open("rb") as handle:
             response = self._request(
                 "POST",
