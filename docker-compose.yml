@@ -108,19 +108,31 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
-      _PIP_ADDITIONAL_REQUIREMENTS: psycopg2-binary==2.9.10
+      _PIP_ADDITIONAL_REQUIREMENTS: psycopg2-binary==2.9.10 requests==2.32.3
+      CLOUDVAULT_BASE_URL: ${CLOUDVAULT_BASE_URL:-http://cloudvault-api}
+      CLOUDVAULT_PROJECT_ID: ecommerce
+      CLOUDVAULT_SERVICE_TOKEN: ${CLOUDVAULT_SERVICE_TOKEN:-}
+      CLOUDVAULT_CONNECT_TIMEOUT_SECONDS: ${CLOUDVAULT_CONNECT_TIMEOUT_SECONDS:-5}
+      CLOUDVAULT_READ_TIMEOUT_SECONDS: ${CLOUDVAULT_READ_TIMEOUT_SECONDS:-60}
+      CLOUDVAULT_MAX_RETRIES: ${CLOUDVAULT_MAX_RETRIES:-3}
+      CLOUDVAULT_RETRY_BASE_SECONDS: ${CLOUDVAULT_RETRY_BASE_SECONDS:-0.5}
+      CLOUDVAULT_MAX_FILE_BYTES: ${CLOUDVAULT_MAX_FILE_BYTES:-104857600}
     user: "${AIRFLOW_UID:-50000}:0"
     ports:
       - "8080:8080"
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
+      - ./integrations:/opt/airflow/integrations:ro
     command: >-
       bash -c "airflow db migrate &&
       airflow users create --username ${AIRFLOW_ADMIN_USER:-airflow}
       --password ${AIRFLOW_ADMIN_PASSWORD:-airflow}
       --firstname Admin --lastname User --role Admin --email admin@example.com || true;
       airflow scheduler & airflow webserver"
+    networks:
+      - default
+      - cloudvault-shared
 
   spark:
     build:
@@ -175,3 +187,8 @@ volumes:
   minio_data:
   kafka_data:
   airflow_db_data:
+
+networks:
+  cloudvault-shared:
+    external: true
+    name: cloudvault-shared
