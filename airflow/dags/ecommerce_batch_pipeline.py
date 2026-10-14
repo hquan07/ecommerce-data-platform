@@ -1,7 +1,10 @@
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
+
+from integrations.ecommerce_reports import export_daily_sales_report, upload_daily_sales_report
 
 default_args = {
     'owner': 'data_team',
@@ -45,7 +48,32 @@ with DAG(
         task_id='data_quality_check',
         bash_command='python /opt/airflow/run_gx_checkpoint.py',
     )
+
+    export_report_task = PythonOperator(
+        task_id='export_daily_sales_report',
+        python_callable=export_daily_sales_report,
+        op_kwargs={
+            'output_dir': '/tmp/ecommerce-reports',
+            'logical_date': '{{ ds }}',
+        },
+    )
+
+    def upload_report(**context):
+        report_path = context['ti'].xcom_pull(task_ids='export_daily_sales_report')
+        if not report_path:
+            raise ValueError('Daily Sales export did not return a local path')
+        return upload_daily_sales_report(
+            report_path,
+            logical_date=context['ds'],
+            source_run_id=context['run_id'],
+        )
+
+    upload_report_task = PythonOperator(
+        task_id='upload_daily_sales_report',
+        python_callable=upload_report,
+    )
     
     end_pipeline = EmptyOperator(task_id='end_pipeline')
 
-    start_pipeline >> ingest_task >> dbt_run_task >> dbt_test_task >> quality_check_task >> end_pipeline
+    start_pipeline >> ingest_task >> dbt_run_task >> dbt_test_task >> quality_check_task
+    quality_check_task >> export_report_task >> upload_report_task >> end_pipeline
